@@ -1,9 +1,9 @@
 /*
  * usuario/prueba_tiempos.c
  *
- *  Minikernel. Versión 1.0
+ *  Minikernel. Versiï¿½n 1.0
  *
- *  Fernando Pérez Costoya
+ *  Fernando Pï¿½rez Costoya
  *
  */
 
@@ -13,8 +13,8 @@
 
 #include "servicios.h"
 
-#define TOT_ITER_FASE1 50000   /* ponga las que considere oportuno */
-#define TOT_ITER_FASE2 20000000      /* ponga las que considere oportuno */
+#define TOT_ITER_FASE1 20   /* ponga las que considere oportuno */
+#define TOT_ITER_FASE2 80      /* ponga las que considere oportuno */
 
 static void imp_tiempos(int real, int usuario, int sistema) {
 	printf("Ticks: Real %d Usuario %d Sistema %d\n",
@@ -62,7 +62,7 @@ int main(){
 
 	printf("PASANDO ARGUMENTO ERRONEO\n");
 
-	/* Debe sobrevivir después de abortar el proceso */ 
+	/* Debe sobrevivir despuï¿½s de abortar el proceso */ 
 	if (crear_proceso("simplon")<0)
 		printf("Error creando simplon\n");
 

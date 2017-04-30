@@ -16,6 +16,16 @@
  *
  */
 
+
+/*
+ * Definicion del tipo que corresponde con la contabilidad
+ * del uso del procesador por parte de un proceso
+ */
+struct tiempos_ejec {
+    int usuario;
+    int sistema;
+};
+
 #ifndef SERVICIOS_H
 #define SERVICIOS_H
 
@@ -31,6 +41,6 @@ int terminar_proceso();
 int escribir(char *texto, unsigned int longi);
 int obtener_id_pr(); //Ejercicio 1
 int dormir(unsigned int segundos); // Ejercicio 2 
+int tiempos_proceso(struct tiempos_ejec *t_ejec); // Ejercicio 3
 
 #endif /* SERVICIOS_H */
-

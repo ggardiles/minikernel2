@@ -37,8 +37,10 @@ typedef struct BCP_t {
         void * pila;			/* dir. inicial de la pila */
 		BCPptr siguiente;		/* puntero a otro BCP */
 		void *info_mem;			/* descriptor del mapa de memoria */
-		int nsecs_bloqueo;
-		int start_bloqueo;
+		int nsecs_bloqueo;		/* segundos totales de bloqueo */
+		int start_bloqueo;		/* momento en el que empezo el bloqueo */
+		int int_sistema;		/* interrupciones en modo sistema */
+ 		int int_usuario;		/* interrupciones en modo usuario */
 } BCP;
 
 /*
@@ -48,12 +50,19 @@ typedef struct BCP_t {
  * procesos bloqueados en sem�foro, etc.).
  *
  */
-
 typedef struct{
 	BCP *primero;
 	BCP *ultimo;
 } lista_BCPs;
 
+/*
+ * Definicion del tipo que corresponde con la contabilidad
+ * del uso del procesador por parte de un proceso
+ */
+struct tiempos_ejec {
+    int usuario;
+    int sistema;
+};
 
 /*
  * Variable global que identifica el proceso actual
@@ -81,6 +90,11 @@ lista_BCPs lista_bloqueados= {NULL, NULL};
  */
  int num_ticks = 0;
 
+ /*
+  * Variable global que representa el acceso a memoria de usuario
+  */
+ int acceso_param = 0;
+
 /*
  *
  * Definici�n del tipo que corresponde con una entrada en la tabla de
@@ -100,6 +114,7 @@ int sis_terminar_proceso();
 int sis_escribir();
 int sis2_obtener_id_pr(); // Ejercicio 1
 int sis2_dormir(); // Ejercicio 2
+int sis2_tiempos_proceso(); // Ejercicio 3
 
 /*
  * Variable global que contiene las rutinas que realizan cada llamada
@@ -109,7 +124,8 @@ servicio tabla_servicios[NSERVICIOS]={
 	{sis_terminar_proceso},
 	{sis_escribir},
 	{sis2_obtener_id_pr},
-	{sis2_dormir}
+	{sis2_dormir},
+	{sis2_tiempos_proceso}
 	};
 
 #endif /* _KERNEL_H */

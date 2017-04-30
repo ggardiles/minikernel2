@@ -14,7 +14,7 @@
 #include "servicios.h"
 
 int main(){
-	/*
+	
 	int segs, id;
 
 	id=obtener_id_pr();
@@ -31,18 +31,4 @@ int main(){
 
 	printf("dormilon (%d): termina\n", id);
 	return 0;
-	*/
-		int segs, id;
-
-	id=obtener_id_pr();
-	printf("dormilon (%d): comienza\n", id);
-
-	// primero duerme 1 segundo
-	printf("dormilon (%d) duerme 1 segundo\n", id);
-	dormir(1);
-
-	printf("dormilon (%d): termina\n", id);
-	return 0;
-
-
 }

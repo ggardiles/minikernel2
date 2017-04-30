@@ -178,10 +178,10 @@ static void exc_arit(){
  * Tratamiento de excepciones en el acceso a memoria
  */
 static void exc_mem(){
-
-	if (!viene_de_modo_usuario())
-		panico("excepcion de memoria cuando estaba dentro del kernel");
-
+	if(acceso_param == 0){
+		if (!viene_de_modo_usuario())
+			panico("excepcion de memoria cuando estaba dentro del kernel");
+	}
 
 	printk("-> EXCEPCION DE MEMORIA EN PROC %d\n", p_proc_actual->id);
 	liberar_proceso();
@@ -207,6 +207,18 @@ static void int_terminal(){
 static void int_reloj(){
 
 	printk("-> TRATANDO INT. DE RELOJ, tic: %d\n", num_ticks);
+	
+	BCP *proceso_listo = lista_listos.primero;
+ 	
+ 	// Rellenar contadores
+ 	if(proceso_listo != NULL){
+ 		if(viene_de_modo_usuario()){
+ 			p_proc_actual->int_usuario++;
+		}
+		else{
+			p_proc_actual->int_sistema++;
+		}
+	}
 
 	BCP *proceso_bloqueado = lista_bloqueados.primero;
 
@@ -386,6 +398,27 @@ int sis2_dormir(){
 
 	return 0;
 }
+
+
+int sis2_tiempos_proceso(){	 
+ 	struct tiempos_ejec *t_ejec;
+ 
+ 	// Recuperar argumento
+ 	t_ejec = (struct tiempos_ejec *)leer_registro(1);
+ 
+ 	if(t_ejec == NULL){
+		 return num_ticks;
+ 	}
+	
+	int lvl_int = fijar_nivel_int(NIVEL_3);
+	acceso_param = 1;
+	fijar_nivel_int(lvl_int);
+
+	// Guardar tiempos
+	t_ejec->usuario = p_proc_actual->int_usuario;
+	t_ejec->sistema = p_proc_actual->int_sistema;
+ 	return num_ticks;
+  }		 
 
 /*
  *
