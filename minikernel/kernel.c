@@ -134,7 +134,10 @@ static void liberar_proceso(){
 	liberar_imagen(p_proc_actual->info_mem); /* liberar mapa */
 
 	p_proc_actual->estado=TERMINADO;
+
+	int lvl_int = fijar_nivel_int(NIVEL_3);
 	eliminar_primero(&lista_listos); /* proc. fuera de listos */
+	fijar_nivel_int(lvl_int);
 
 	/* Realizar cambio de contexto */
 	p_proc_anterior=p_proc_actual;
@@ -265,6 +268,13 @@ static void tratar_llamsis(){
 static void int_sw(){
 
 	printk("-> TRATANDO INT. SW\n");
+	BCP *proceso = lista_listos.primero;
+
+	// Situar proceso en ejecución al final de la cola de listos
+	int lvl_int = fijar_nivel_int(NIVEL_3);
+	eliminar_elem(&lista_listos, proceso);
+	insertar_ultimo(&lista_listos, proceso);
+	fijar_nivel_int(lvl_int);
 
 	return;
 }
@@ -301,7 +311,10 @@ static int crear_tarea(char *prog){
 		p_proc->estado=LISTO;
 
 		/* lo inserta al final de cola de listos */
+		int lvl_int = fijar_nivel_int(NIVEL_3);
 		insertar_ultimo(&lista_listos, p_proc);
+		fijar_nivel_int(lvl_int);
+
 		error= 0;
 	}
 	else
@@ -328,10 +341,8 @@ int sis_crear_proceso(){
 	printk("-> PROC %d: CREAR PROCESO\n", p_proc_actual->id);
 
 	prog=(char *)leer_registro(1);
-	
-	lvl_int = fijar_nivel_int(NIVEL_3);
+
 	res=crear_tarea(prog);
-	fijar_nivel_int(lvl_int);
 
 	return res;
 }
