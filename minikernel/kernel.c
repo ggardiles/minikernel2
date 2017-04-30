@@ -326,8 +326,13 @@ int sis_crear_proceso(){
 	int res;
 
 	printk("-> PROC %d: CREAR PROCESO\n", p_proc_actual->id);
+
 	prog=(char *)leer_registro(1);
+	
+	lvl_int = fijar_nivel_int(NIVEL_3);
 	res=crear_tarea(prog);
+	fijar_nivel_int(lvl_int);
+
 	return res;
 }
 
