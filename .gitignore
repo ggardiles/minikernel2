@@ -1,0 +1,12 @@
+boot/boot
+**/*.o
+minikernel/kernel
+minikernel/kernel.o
+minikernel/HAL.o
+usuario
+!usuario/*.c
+!usuario/include
+!usuario/lib
+!Makefile
+*.txt
+
