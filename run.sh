@@ -1,3 +1,3 @@
 #!/bin/sh
-boot/boot minikernel/kernel # > out.txt
+boot/boot minikernel/kernel  > out.txt
 

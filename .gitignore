@@ -3,7 +3,7 @@ boot/boot
 minikernel/kernel
 minikernel/kernel.o
 minikernel/HAL.o
-usuario
+usuario/*
 !usuario/*.c
 !usuario/include
 !usuario/lib

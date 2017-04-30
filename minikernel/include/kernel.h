@@ -37,6 +37,8 @@ typedef struct BCP_t {
         void * pila;			/* dir. inicial de la pila */
 		BCPptr siguiente;		/* puntero a otro BCP */
 		void *info_mem;			/* descriptor del mapa de memoria */
+		int nsecs_bloqueo;
+		int start_bloqueo;
 } BCP;
 
 /*
@@ -69,6 +71,15 @@ BCP tabla_procs[MAX_PROC];
  * Variable global que representa la cola de procesos listos
  */
 lista_BCPs lista_listos= {NULL, NULL};
+
+/*
+ * Variable global que representa la cola de procesos listos
+ */
+lista_BCPs lista_bloqueados= {NULL, NULL};
+/*
+ * Variable global que representa el número de llamadas a int_reloj
+ */
+ int num_ticks = 0;
 
 /*
  *

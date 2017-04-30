@@ -206,9 +206,30 @@ static void int_terminal(){
  */
 static void int_reloj(){
 
-	printk("-> TRATANDO INT. DE RELOJ\n");
+	printk("-> TRATANDO INT. DE RELOJ, tic: %d\n", num_ticks);
 
-        return;
+	BCP *proceso_bloqueado = lista_bloqueados.primero;
+
+	// Incrementa contador de llamadas a int_reloj
+	num_ticks++;
+	
+	if (proceso_bloqueado == NULL) {
+		return;
+	}
+
+	// Calcular tiempo de bloqueo
+	int ticks_left = (proceso_bloqueado->nsecs_bloqueo * TICK) - (num_ticks - proceso_bloqueado->start_bloqueo);
+	
+	// Si han pasado los ticks necesarios -> Desbloquear
+	if(ticks_left <= 0){
+		proceso_bloqueado->estado = LISTO;
+
+		// Proceso pasa a listo
+		int lvl_int = fijar_nivel_int(NIVEL_3);
+		eliminar_elem(&lista_bloqueados, proceso_bloqueado);
+		insertar_ultimo(&lista_listos, proceso_bloqueado);
+		fijar_nivel_int(lvl_int);
+	}
 }
 
 /*
@@ -338,13 +359,15 @@ int sis2_obtener_id_pr(){
  * EJERCICIO 2: Llamada dormir
  */
 int sis2_dormir(){
-	int nsecs, lvl_int;
+	int lvl_int;
+	unsigned int nsecs;
 
 	nsecs = (unsigned int) leer_registro(1);
 
 	// Actualizar BCP a bloqueado
 	p_proc_actual->estado = BLOQUEADO;
 	p_proc_actual->nsecs_bloqueo = nsecs;
+	p_proc_actual->start_bloqueo = num_ticks;
 
 	// Fijar nivel de interrupción a 3
 	lvl_int = fijar_nivel_int(NIVEL_3);
