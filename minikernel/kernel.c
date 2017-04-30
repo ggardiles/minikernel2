@@ -119,6 +119,11 @@ static void espera_int(){
 static BCP * planificador(){
 	while (lista_listos.primero==NULL)
 		espera_int();		/* No hay nada que hacer */
+
+	// Assign slice to process
+	BCP *proceso = lista_listos.primero;
+ 	proceso->ticks_left_rr = TICKS_POR_RODAJA;
+
 	return lista_listos.primero;
 }
 
@@ -209,7 +214,7 @@ static void int_terminal(){
  */
 static void int_reloj(){
 
-	printk("-> TRATANDO INT. DE RELOJ, tic: %d\n", num_ticks);
+	//printk("-> TRATANDO INT. DE RELOJ, tic: %d\n", num_ticks);
 	
 	BCP *proceso_listo = lista_listos.primero;
  	
@@ -220,6 +225,16 @@ static void int_reloj(){
 		}
 		else{
 			p_proc_actual->int_sistema++;
+		}
+
+		// Ha terminado slice round robin?
+		if(p_proc_actual->ticks_left_rr > 0){
+			printk("Int. reloj tic=%d, Proceso(%d) remaining ticks %d\n",num_ticks, p_proc_actual->id, p_proc_actual->ticks_left_rr);	
+			p_proc_actual->ticks_left_rr--;	// No ha terminado -> resto tiempo	
+		}
+		else{
+			id_proc_int_sw = p_proc_actual->id;
+			activar_int_SW(); // Ha terminado -> Interrupcion
 		}
 	}
 
@@ -268,13 +283,23 @@ static void tratar_llamsis(){
 static void int_sw(){
 
 	printk("-> TRATANDO INT. SW\n");
-	BCP *proceso = lista_listos.primero;
+
+	if(id_proc_int_sw != p_proc_actual->id){
+		return;
+	}
+
+	BCP *proceso_listo = lista_listos.primero;
 
 	// Situar proceso en ejecución al final de la cola de listos
 	int lvl_int = fijar_nivel_int(NIVEL_3);
-	eliminar_elem(&lista_listos, proceso);
-	insertar_ultimo(&lista_listos, proceso);
+	eliminar_elem(&lista_listos, proceso_listo);
+	insertar_ultimo(&lista_listos, proceso_listo);
 	fijar_nivel_int(lvl_int);
+
+	// Cambio de contexto por int sw -> planificacion round robin
+	BCP *p_proc_bloq = p_proc_actual;
+	p_proc_actual = planificador();
+	cambio_contexto(&(p_proc_bloq->contexto_regs), &(p_proc_actual->contexto_regs));
 
 	return;
 }
@@ -342,7 +367,9 @@ int sis_crear_proceso(){
 
 	prog=(char *)leer_registro(1);
 
+	int lvl_int = fijar_nivel_int(NIVEL_3);
 	res=crear_tarea(prog);
+	fijar_nivel_int(lvl_int);
 
 	return res;
 }
@@ -387,7 +414,7 @@ int sis2_obtener_id_pr(){
  * EJERCICIO 2: Llamada dormir
  */
 int sis2_dormir(){
-	int lvl_int;
+	
 	unsigned int nsecs;
 
 	nsecs = (unsigned int) leer_registro(1);
@@ -398,7 +425,7 @@ int sis2_dormir(){
 	p_proc_actual->start_bloqueo = num_ticks;
 
 	// Fijar nivel de interrupción a 3
-	lvl_int = fijar_nivel_int(NIVEL_3);
+	int lvl_int = fijar_nivel_int(NIVEL_3);
 	
 	// Pasar proceso lista de listos -> bloqueados
 	eliminar_elem(&lista_listos, p_proc_actual);

@@ -13,8 +13,8 @@
 
 #include "servicios.h"
 
-#define TOT_ITER_FASE1 20   /* ponga las que considere oportuno */
-#define TOT_ITER_FASE2 80      /* ponga las que considere oportuno */
+#define TOT_ITER_FASE1 50000   /* ponga las que considere oportuno */
+#define TOT_ITER_FASE2 20000000      /* ponga las que considere oportuno */
 
 static void imp_tiempos(int real, int usuario, int sistema) {
 	printf("Ticks: Real %d Usuario %d Sistema %d\n",
