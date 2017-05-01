@@ -407,9 +407,7 @@ int sis_crear_proceso(){
 
 	prog=(char *)leer_registro(1);
 
-	int lvl_int = fijar_nivel_int(NIVEL_3);
 	res=crear_tarea(prog);
-	fijar_nivel_int(lvl_int);
 
 	return res;
 }
