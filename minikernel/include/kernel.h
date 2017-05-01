@@ -41,6 +41,7 @@ typedef struct BCP_t {
 		int start_bloqueo;		/* momento en el que empezo el bloqueo */
 		int int_sistema;		/* interrupciones en modo sistema */
  		int int_usuario;		/* interrupciones en modo usuario */
+		int ticks_left_rr; 		/* ticks restantes slice round-robin */
 } BCP;
 
 /*
@@ -94,6 +95,11 @@ lista_BCPs lista_bloqueados= {NULL, NULL};
   * Variable global que representa el acceso a memoria de usuario
   */
  int acceso_param = 0;
+
+/* 
+ * Variable global que representa el id del proceso bloqueado por int sw
+ */
+ int id_proc_int_sw = 0;
 
 /*
  *

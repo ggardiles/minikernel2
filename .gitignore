@@ -9,4 +9,5 @@ usuario/*
 !usuario/lib
 !Makefile
 *.txt
+*.tar.gz
 

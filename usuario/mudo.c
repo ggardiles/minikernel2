@@ -1,9 +1,9 @@
 /*
  * usuario/mudo.c
  *
- *  Minikernel. Versión 1.0
+ *  Minikernel. Versiï¿½n 1.0
  *
- *  Fernando Pérez Costoya
+ *  Fernando Pï¿½rez Costoya
  *
  */
 
@@ -13,7 +13,7 @@
 
 #include "servicios.h"
 
-#define TOT_ITER 20000000	/* ponga las que considere oportuno */
+#define TOT_ITER 70000000	/* ponga las que considere oportuno */
 
 int main(){
 	int i, tot;
