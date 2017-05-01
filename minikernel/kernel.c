@@ -228,7 +228,7 @@ static void int_reloj(){
 		}
 
 		// Ha terminado slice round robin?
-		if(p_proc_actual->ticks_left_rr > 0){
+		if(p_proc_actual->ticks_left_rr > 1){
 			printk("Int. reloj tic=%d, Proceso(%d) remaining ticks %d\n",num_ticks, p_proc_actual->id, p_proc_actual->ticks_left_rr);	
 			p_proc_actual->ticks_left_rr--;	// No ha terminado -> resto tiempo	
 		}
@@ -442,7 +442,9 @@ int sis2_dormir(){
 	return 0;
 }
 
-
+/*
+ * EJERCICIO 3: Llamada tiempos proceso
+ */
 int sis2_tiempos_proceso(){	 
  	struct tiempos_ejec *t_ejec;
  
