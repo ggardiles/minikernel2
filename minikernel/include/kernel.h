@@ -42,6 +42,7 @@ typedef struct BCP_t {
 		int int_sistema;		/* interrupciones en modo sistema */
  		int int_usuario;		/* interrupciones en modo usuario */
 		int ticks_left_rr; 		/* ticks restantes slice round-robin */
+		int is_bloq_lectura;/* bloqueado por lectura */
 } BCP;
 
 /*
@@ -101,6 +102,18 @@ lista_BCPs lista_bloqueados= {NULL, NULL};
  */
  int id_proc_int_sw = 0;
 
+ /*
+  * Variable global que indica el número de caracteres en el buffer
+  */
+ int size_char_buf = 0;
+
+ /*
+  * Buffer de caracteres procesados del terminal
+  */
+ char char_buf[TAM_BUF_TERM];
+ 
+
+
 /*
  *
  * Definici�n del tipo que corresponde con una entrada en la tabla de
@@ -121,7 +134,7 @@ int sis_escribir();
 int sis2_obtener_id_pr(); // Ejercicio 1
 int sis2_dormir(); // Ejercicio 2
 int sis2_tiempos_proceso(); // Ejercicio 3
-
+int sis2_leer_caracter(); // Ejercicio 3
 /*
  * Variable global que contiene las rutinas que realizan cada llamada
  */
@@ -131,7 +144,8 @@ servicio tabla_servicios[NSERVICIOS]={
 	{sis_escribir},
 	{sis2_obtener_id_pr},
 	{sis2_dormir},
-	{sis2_tiempos_proceso}
+	{sis2_tiempos_proceso},
+	{sis2_leer_caracter}
 	};
 
 #endif /* _KERNEL_H */

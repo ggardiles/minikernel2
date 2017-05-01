@@ -52,4 +52,7 @@ int dormir(unsigned int segundos){ // Ejercicio 2
 int tiempos_proceso(struct tiempos_ejec *t_ejec){ // Ejercicio 3
 	return llamsis(TIEMPOS_PROCESO, 1, (long) t_ejec);
 }
+int leer_caracter(){
+  	return llamsis(LEER_CARACTER,0);
+}
 

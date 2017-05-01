@@ -105,7 +105,7 @@ static void eliminar_elem(lista_BCPs *lista, BCP * proc){
 static void espera_int(){
 	int nivel;
 
-	printk("-> NO HAY LISTOS. ESPERA INT\n");
+	//printk("-> NO HAY LISTOS. ESPERA INT\n");
 
 	/* Baja al m�nimo el nivel de interrupci�n mientras espera */
 	nivel=fijar_nivel_int(NIVEL_1);
@@ -206,7 +206,47 @@ static void int_terminal(){
 	car = leer_puerto(DIR_TERMINAL);
 	printk("-> TRATANDO INT. DE TERMINAL %c\n", car);
 
-        return;
+
+	// Si sobrepasa el tamaño máximo del buffer de entrada -> no seguir
+	if(size_char_buf >= TAM_BUF_TERM){
+		return;
+	}
+
+	char_buf[size_char_buf] = car;
+	size_char_buf++;	
+
+	// liberar procesos bloqueados
+	BCP *proc_bloq = lista_bloqueados.primero;
+
+	int desbloqueado = 0;
+	if (proc_bloq != NULL){
+		// Si esta bloqueado por lectura
+		if(proc_bloq->is_bloq_lectura == 1){
+			// Desbloquear proceso
+			desbloqueado = 1;
+			proc_bloq->estado = LISTO;
+			proc_bloq->is_bloq_lectura = 0;
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proc_bloq);
+			insertar_ultimo(&lista_listos, proc_bloq);
+			fijar_nivel_int(lvl_int);
+		}
+	}
+	
+	while(desbloqueado == 0 && proc_bloq != lista_bloqueados.ultimo){
+		proc_bloq = proc_bloq->siguiente;
+		if(proc_bloq->is_bloq_lectura == 1){ // Podemos desbloquear este proceso bloqueado
+			desbloqueado = 1;
+			proc_bloq->estado = LISTO;
+			proc_bloq->is_bloq_lectura = 0;
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proc_bloq);
+			insertar_ultimo(&lista_listos, proc_bloq);
+			fijar_nivel_int(lvl_int);
+		}
+	}	
+	
+    return;
 }
 
 /*
@@ -251,7 +291,7 @@ static void int_reloj(){
 	int ticks_left = (proceso_bloqueado->nsecs_bloqueo * TICK) - (num_ticks - proceso_bloqueado->start_bloqueo);
 	
 	// Si han pasado los ticks necesarios -> Desbloquear
-	if(ticks_left <= 0){
+	if(ticks_left <= 0 && proceso_bloqueado->is_bloq_lectura == 0){
 		proceso_bloqueado->estado = LISTO;
 
 		// Proceso pasa a listo
@@ -464,6 +504,45 @@ int sis2_tiempos_proceso(){
 	t_ejec->sistema = p_proc_actual->int_sistema;
  	return num_ticks;
   }		 
+
+
+
+
+/*
+ * Ejercicio 5
+ */
+int sis2_leer_caracter(){
+
+	// Bloqueo si vacio -> con loop en vez de condicion
+	while(size_char_buf == 0){
+		p_proc_actual->estado = BLOQUEADO;
+		p_proc_actual->is_bloq_lectura = 1;
+		int lvl_int = fijar_nivel_int(NIVEL_3);
+		eliminar_elem(&lista_listos, p_proc_actual);
+		insertar_ultimo(&lista_bloqueados, p_proc_actual);
+		fijar_nivel_int(lvl_int);
+
+		// Cambio de proceso actual con cambio de contexto
+		BCP *proc_bloq = p_proc_actual;
+		p_proc_actual = planificador();
+		cambio_contexto(&(proc_bloq->contexto_regs), &(p_proc_actual->contexto_regs));
+	}
+
+	// Recuperar primer caracter
+	int lvl_int = fijar_nivel_int(NIVEL_2);
+	char car = char_buf[0];
+
+	// Reassign positions in buffer
+	printk("Reassign positions in buffer, size = %d\n", size_char_buf);
+	size_char_buf--;
+	int i;
+	for (i = 0; i < size_char_buf; i++){
+		char_buf[i] = char_buf[i+1];
+	}
+	fijar_nivel_int(lvl_int);
+
+	return car;
+}
 
 /*
  *
