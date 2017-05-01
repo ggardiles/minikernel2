@@ -512,6 +512,8 @@ int sis2_tiempos_proceso(){
  * Ejercicio 5
  */
 int sis2_leer_caracter(){
+	// Inhibir interrupciones <= nivel 2
+	int lvl_int = fijar_nivel_int(NIVEL_2);
 
 	// Bloqueo si vacio -> con loop en vez de condicion
 	while(size_char_buf == 0){
@@ -529,7 +531,6 @@ int sis2_leer_caracter(){
 	}
 
 	// Recuperar primer caracter
-	int lvl_int = fijar_nivel_int(NIVEL_2);
 	char car = char_buf[0];
 
 	// Reassign positions in buffer
