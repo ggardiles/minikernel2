@@ -42,5 +42,6 @@ int escribir(char *texto, unsigned int longi);
 int obtener_id_pr(); //Ejercicio 1
 int dormir(unsigned int segundos); // Ejercicio 2 
 int tiempos_proceso(struct tiempos_ejec *t_ejec); // Ejercicio 3
+int leer_caracter(); // Ejercicio 5
 
 #endif /* SERVICIOS_H */
