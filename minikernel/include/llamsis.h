@@ -19,7 +19,7 @@
 #define _LLAMSIS_H
 
 /* Numero de llamadas disponibles */
-#define NSERVICIOS 7
+#define NSERVICIOS 12
 
 #define CREAR_PROCESO 0
 #define TERMINAR_PROCESO 1
@@ -28,6 +28,11 @@
 #define DORMIR 4
 #define TIEMPOS_PROCESO 5
 #define LEER_CARACTER 6
+#define CREAR_MUTEX 7
+#define ABRIR_MUTEX 8
+#define CERRAR_MUTEX 9
+#define LOCK 10
+#define UNLOCK 11
 
 #endif /* _LLAMSIS_H */
 

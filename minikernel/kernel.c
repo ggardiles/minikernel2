@@ -14,7 +14,7 @@
  */
 
 #include "kernel.h"	/* Contiene defs. usadas por este modulo */
-
+#include <string.h>
 /*
  *
  * Funciones relacionadas con la tabla de procesos:
@@ -22,6 +22,46 @@
  *
  */
 
+
+static int is_mutex_name_used(char *nombre){
+	int i;
+	//printk("NOMBRE: %s\n", nombre);
+	for (i = 0; i < NUM_MUT; i++){
+		mutex *mut = (mutex*) &(mutex_list[i]);
+		/*if (strlen(mut->nombre)>0){
+			printk("NOMBRE_LISTA=%s  ",mut->nombre);
+			printk("CMP=%d\n",strcmp(mut->nombre, nombre));
+		}*/
+		
+		if(strcmp(mut->nombre, nombre) == 0){
+			return ERR_NAME_USED;
+		}
+	}
+	return 0;
+}
+/*
+static void unblock_waiting_mutex(){
+		// Unblock processes waiting for mutex
+		BCP *proc_unblock = lista_bloqueados.primero;
+
+		while(proc_unblock != NULL && proc_unblock->is_bloq_mutex == 1){
+			
+			proc_unblock->estado = LISTO;
+			proc_unblock->is_bloq_mutex = 0;
+			BCP *proc_next = proc_unblock->siguiente;
+
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proc_unblock);
+			insertar_ultimo(&lista_listos, proc_unblock);
+			fijar_nivel_int(lvl_int);
+
+			proc_unblock = proc_next;
+			if(proc_unblock != NULL){
+				proc_next = proc_unblock->siguiente;
+			}
+		}
+}
+*/
 /*
  * Funci�n que inicia la tabla de procesos
  */
@@ -135,6 +175,68 @@ static BCP * planificador(){
  */
 static void liberar_proceso(){
 	BCP * p_proc_anterior;
+
+	// Mutex
+	int i,j,debug=0;
+
+	for (i = 0; i < NUM_MUT_PROC; i++){
+		for(j = 0; j < NUM_MUT; j++){
+			mutex *mut_local  = (mutex *) &(p_proc_actual->mutex_list_proc[i]);
+			mutex *mut_global = (mutex *) &(mutex_list[j]);
+			// Existe mutex en lista global, lista de proceso y los nombres coinciden
+			if(mut_local == NULL || mut_global == NULL){
+				continue;
+			}
+			printk("local: %s, ",(mut_local->nombre));
+			printk("global: %s, ",mut_global->nombre);
+			printk("cpm:%d\n",strcmp(mut_global->nombre, mut_local->nombre) );
+			if (strcmp(mut_global->nombre, mut_local->nombre) == 0){
+				
+				mut_global->procesos[p_proc_actual->id] = 0;
+				printk("LOCAL: %s, GLOBAL: %s\n",mut_local, mut_global);
+				int k, is_bloq_by_other=0;
+				for (k = 0; k < MAX_PROC; k++){
+					if(mut_global->procesos[k] == 1){
+						is_bloq_by_other = k; // No continuar -> otro
+						break;
+					}
+				}
+				if(is_bloq_by_other>0){
+					printk("is_bloq_by_other: %d\n", is_bloq_by_other);
+					//p_proc_actual->mutex_list_proc[i] = mut_local;
+					//mutex_list[j] = mut_global;
+					break;
+				}
+			
+				/* Eliminar Mutex */
+				// Eliminar el mutex global
+				
+				strcpy(mut_global->nombre,"");
+				mutex_count--;
+				printk("B LLEGO %d\n",debug++);
+				// Desbloquea procesos esperando para crear mutex
+				//unblock_waiting_mutex()
+				// Unblock processes waiting for mutex
+				BCP *proc_unblock = lista_bloqueados.primero;
+
+				while((proc_unblock != NULL) && (proc_unblock->is_bloq_mutex == 1)){
+					printk("C LLEGO %d\n",debug++);
+					proc_unblock->estado = LISTO;
+					proc_unblock->is_bloq_mutex = 0;
+					BCP *proc_next = proc_unblock->siguiente;
+					printk("LLEGO %d\n",debug++);
+					int lvl_int = fijar_nivel_int(NIVEL_3);
+					eliminar_elem(&lista_bloqueados, proc_unblock);
+					insertar_ultimo(&lista_listos, proc_unblock);
+					fijar_nivel_int(lvl_int);
+					printk("LLEGO %d\n",debug++);
+					proc_unblock = proc_next;
+					printk("F LLEGO %d\n",debug++);
+				}
+				printk("FIN\n");
+			}
+		}
+	}
 
 	liberar_imagen(p_proc_actual->info_mem); /* liberar mapa */
 
@@ -283,23 +385,30 @@ static void int_reloj(){
 	// Incrementa contador de llamadas a int_reloj
 	num_ticks++;
 	
-	if (proceso_bloqueado == NULL) {
-		return;
+	// Desbloquear siguiente bloqueado
+	while(proceso_bloqueado != NULL){
+		
+		// Calcular tiempo de bloqueo
+		int ticks_left = (proceso_bloqueado->nsecs_bloqueo * TICK) - (num_ticks - proceso_bloqueado->start_bloqueo);
+		BCP *proc_next = proceso_bloqueado->siguiente;
+
+		// Si han pasado los ticks necesarios -> Desbloquear
+		if(ticks_left <= 0 &&
+		proceso_bloqueado->is_bloq_lectura == 0 &&
+		proceso_bloqueado->is_bloq_mutex == 0){
+			
+			// Proceso pasa a listo
+			proceso_bloqueado->estado = LISTO;
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proceso_bloqueado);
+			insertar_ultimo(&lista_listos, proceso_bloqueado);
+			fijar_nivel_int(lvl_int);
+		}
+
+		proceso_bloqueado = proc_next;
 	}
 
-	// Calcular tiempo de bloqueo
-	int ticks_left = (proceso_bloqueado->nsecs_bloqueo * TICK) - (num_ticks - proceso_bloqueado->start_bloqueo);
-	
-	// Si han pasado los ticks necesarios -> Desbloquear
-	if(ticks_left <= 0 && proceso_bloqueado->is_bloq_lectura == 0){
-		proceso_bloqueado->estado = LISTO;
-
-		// Proceso pasa a listo
-		int lvl_int = fijar_nivel_int(NIVEL_3);
-		eliminar_elem(&lista_bloqueados, proceso_bloqueado);
-		insertar_ultimo(&lista_listos, proceso_bloqueado);
-		fijar_nivel_int(lvl_int);
-	}
+	return;
 }
 
 /*
@@ -541,6 +650,196 @@ int sis2_leer_caracter(){
 	fijar_nivel_int(lvl_int);
 
 	return car;
+}
+
+
+int sis2_crear_mutex(){
+	char *nombre = (char *)leer_registro(1);
+	int tipo = (int)leer_registro(2);
+
+	printk("CREAR MUTEX: nombre: %s, tipo: %d\n",nombre,tipo);
+	if(p_proc_actual->mutex_count_proc > NUM_MUT_PROC){
+		printk("ERR: ERR_MUT_PROC_COUNT\n");
+		return ERR_MUT_PROC_COUNT;
+	}
+	if(strlen(nombre) > MAX_NOM_MUT){
+		printk("ERR: ERR_NAME_LENGTH\n");
+		return ERR_NAME_LENGTH;
+	}	
+	if(is_mutex_name_used(nombre)<0){
+		printk("ERR: ERR_NAME_USED\n");
+		return ERR_NAME_USED;
+	}
+	// Si alcanzado maximo mutex -> bloquear
+	while(mutex_count == NUM_MUT){
+		printk("ALCANZADO NUM_MUT\n");
+		// Bloquear proceso actual
+		p_proc_actual->estado = BLOQUEADO;
+		p_proc_actual->is_bloq_mutex = 1;
+		int lvl_int = fijar_nivel_int(NIVEL_3);
+		eliminar_elem(&lista_listos, p_proc_actual);
+		insertar_ultimo(&lista_bloqueados, p_proc_actual);
+		fijar_nivel_int(lvl_int);
+
+		// CCV
+		BCP *proceso_bloqueado = p_proc_actual;
+		p_proc_actual = planificador();
+		cambio_contexto(&(proceso_bloqueado->contexto_regs), &(p_proc_actual->contexto_regs));	
+
+		// Al volver, comprobar nombre no usado
+		if(is_mutex_name_used(nombre)<0){
+			return ERR_NAME_USED;
+		}
+	}
+
+	// Crear mutex si hay hueco
+	int mut_idx, i;
+	for (i = 0; i < NUM_MUT; i++){
+		mutex *new_mut =(mutex *) &(mutex_list[i]);
+		if(new_mut == NULL ||
+		strlen(new_mut->nombre)==0){
+			strcpy(new_mut->nombre, nombre);
+			new_mut->tipo = tipo;
+			new_mut->procesos[p_proc_actual->id] = 1;
+			mut_idx = i;
+			break;
+		}
+	}
+
+	// Incrementar contador global de mutex
+	mutex_count += 1;
+
+	// Asignar descriptor
+	for (i = 0; i < NUM_MUT_PROC; i++){
+		mutex *mut = (mutex *) &(p_proc_actual->mutex_list_proc[i]);
+		if(strlen(mut->nombre)==0){
+			mut = (mutex *) &mutex_list[mut_idx];
+			p_proc_actual->mutex_count_proc++;
+			//p_proc_actual->mutex_list_proc[i] = mut;
+			printk("Descriptor: %d\n",i);
+			return i;
+		}
+	}
+	printk("ERR_DES_NOT_AVAIL\n");
+	return ERR_DES_NOT_AVAIL;
+}
+
+int sis2_abrir_mutex(){
+
+	char *nombre = (char *)leer_registro(1);
+	printk("ABRIR MUTEX: nombre: %s\n",nombre);
+	
+	// Comprueba número de mutex del proceso
+	if(p_proc_actual->mutex_count_proc >= NUM_MUT_PROC){
+		printk("ERR_MUT_PROC_COUNT\n");
+		return ERR_MUT_PROC_COUNT;
+	}
+
+	int i, mut_idx = -2;
+
+	// Buscar indice del mutex
+	for (i = 0; i < NUM_MUT; i++){
+		mutex *mut =(mutex *) &(mutex_list[i]);
+		if(strlen(mut->nombre)>0 && strcmp(mut->nombre, nombre) == 0){
+			mut->procesos[p_proc_actual->id] = 1;
+			mut_idx = i;
+			mutex_list[i]=mut;
+			break;
+		}
+	}
+
+	if(mut_idx < 0){
+		printk("ERR_NAME_NOT_EXISTS\n");
+		return ERR_NAME_NOT_EXISTS;
+	}
+
+	// Asignar descriptor libre
+	for (i = 0; i < NUM_MUT_PROC; i++){
+		mutex *mut = (mutex *) &(p_proc_actual->mutex_list_proc[i]);
+		if(strlen(mut->nombre) == 0){
+			mut = (mutex *) &mutex_list[mut_idx];
+			p_proc_actual->mutex_count_proc++;
+			//p_proc_actual->mutex_list_proc[i] = mut;
+			printk("Descriptor: %d\n",i);
+			return i;
+		}
+	}
+	printk("ERR_DES_NOT_AVAIL\n");
+	return ERR_DES_NOT_AVAIL;
+}
+
+int sis2_cerrar_mutex(){
+
+	// Indice en la lista de mutex del proceso
+	unsigned int mut_id = (unsigned int)leer_registro(1);
+	printk("CERRAR MUTEX: nombre: %d\n",mut_id);
+	if(p_proc_actual->mutex_list_proc[mut_id] == NULL){
+		return MUT_NOT_EXIST;
+	}
+
+	// Elimina contador de mutex abierto en proceso en array global de mutex
+	int i;
+	for (i = 0; i < NUM_MUT; i++){
+		mutex *mut = (mutex *) &(mutex_list[i]);
+		// Si nombre NULL o no coincide con el del proceso continuar
+		if(strlen(mut->nombre)==0 ||
+				strcmp(mut->nombre, p_proc_actual->mutex_list_proc[mut_id]->nombre) != 0){
+					continue;
+				}
+		
+		mut->procesos[p_proc_actual->id] = 0;
+
+		int k, is_bloq_by_other=0;
+		for (k = 0; k < MAX_PROC; k++){
+			if(mut->procesos[k] == 1){
+				is_bloq_by_other = 1; // No continuar -> otro
+				break;
+			}
+		}
+		if(is_bloq_by_other){
+			break;
+		}
+		
+		/* Cerrar el mutex */
+		// Delete global mutex
+		strcpy(mut->nombre, "");
+		mutex_count--;
+
+		//unblock_waiting_mutex();
+		// Unblock processes waiting for mutex
+		BCP *proc_unblock = lista_bloqueados.primero;
+
+		while(proc_unblock != NULL && proc_unblock->is_bloq_mutex == 1){
+			
+			proc_unblock->estado = LISTO;
+			proc_unblock->is_bloq_mutex = 0;
+			BCP *proc_next = proc_unblock->siguiente;
+
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proc_unblock);
+			insertar_ultimo(&lista_listos, proc_unblock);
+			fijar_nivel_int(lvl_int);
+
+			proc_unblock = proc_next;
+			if(proc_unblock != NULL){
+				proc_next = proc_unblock->siguiente;
+			}
+		}
+	}
+
+	// Delete mutex local
+	p_proc_actual->mutex_count_proc--;
+	p_proc_actual->mutex_list_proc[mut_id] = NULL;
+
+	return 0;
+}
+
+int sis2_lock(){
+	return -1;
+}
+
+int sis2_unlock(){
+	return -1;
 }
 
 /*
