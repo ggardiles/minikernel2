@@ -39,7 +39,8 @@ typedef struct{
     char nombre[MAX_NOM_MUT]; 	
 	int tipo;	
 	int is_used;
-	int procesos[MAX_PROC]; // Procesos con el mutex abierto	
+	int procesos[MAX_PROC]; // Procesos con el mutex abierto
+	int procesos_count;	
 } mutex;
 
 /*
@@ -64,8 +65,8 @@ typedef struct BCP_t {
  		int int_usuario;		/* interrupciones en modo usuario */
 		int ticks_left_rr; 		/* ticks restantes slice round-robin */
 		int is_bloq_lectura;	/* bloqueado por lectura */
-		mutex *mutex_list_proc[NUM_MUT_PROC];
-		int mutex_count_proc;
+		int mutex_list_proc[NUM_MUT_PROC];
+		int mutex_proc_count;
 		int is_bloq_mutex;      /*bloqueado creado el mutex*/
 } BCP;
 
@@ -140,7 +141,7 @@ lista_BCPs lista_bloqueados= {NULL, NULL};
  /*
   * Lista donde se guardaran todos los mutex
   */
- mutex *mutex_list[NUM_MUT];
+ mutex mutex_list[NUM_MUT];
 
   /*
   * Variable donde se guardaran el contador de mutex en el sistema
