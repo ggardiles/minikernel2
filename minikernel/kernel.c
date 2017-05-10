@@ -380,7 +380,7 @@ static void int_reloj(){
 	}
 
 	BCP *proceso_bloqueado = lista_bloqueados.primero;
-	BCP *proceso_next;
+
 	// Incrementa contador de llamadas a int_reloj
 	num_ticks++;
 	
