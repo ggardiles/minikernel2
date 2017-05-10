@@ -215,9 +215,7 @@ static void liberar_proceso(){
 		// Unblock processes waiting for mutex
 		BCP *proc_unblock = lista_bloqueados.primero;
 
-		int count = 0;
 		while(proc_unblock != NULL){
-			count++;
 			BCP *proc_next = proc_unblock->siguiente;
 			if(proc_unblock->is_bloq_mutex == 1){
 				proc_unblock->estado = LISTO;
@@ -229,9 +227,7 @@ static void liberar_proceso(){
 				fijar_nivel_int(lvl_int);
 				break;
 			}
-			if (count>MAX_PROC*2){
-				break; // Safety check
-			}
+
 			proc_unblock = proc_next;
 		}
 		printk("FIN\n");
@@ -796,9 +792,8 @@ int sis2_cerrar_mutex(){
 	// Unblock processes waiting for mutex
 	BCP *proc_unblock = lista_bloqueados.primero;
 
-	int count=0;
+
 	while(proc_unblock != NULL){
-		count++;
 		BCP *proc_next = proc_unblock->siguiente;
 		if (proc_unblock->is_bloq_mutex == 1){
 			proc_unblock->estado = LISTO;
@@ -811,9 +806,6 @@ int sis2_cerrar_mutex(){
 			fijar_nivel_int(lvl_int);
 
 			break;
-		}
-		if (count>MAX_PROC*2){
-			break; // Safety check
 		}
 		proc_unblock = proc_next;
 	}
