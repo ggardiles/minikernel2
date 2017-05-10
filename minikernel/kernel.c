@@ -383,25 +383,6 @@ static void int_reloj(){
 	BCP *proceso_next;
 	// Incrementa contador de llamadas a int_reloj
 	num_ticks++;
-<<<<<<< HEAD
-	while (proceso_bloqueado != NULL){
-		proceso_next = proceso_bloqueado->siguiente;
-
-		// Calcular tiempo de bloqueo
-		int ticks_left = (proceso_bloqueado->nsecs_bloqueo * TICK) - (num_ticks - proceso_bloqueado->start_bloqueo);
-		
-		// Si han pasado los ticks necesarios -> Desbloquear
-		if(ticks_left <= 0 && proceso_bloqueado->is_bloq_lectura == 0){
-			proceso_bloqueado->estado = LISTO;
-
-			// Proceso pasa a listo
-			int lvl_int = fijar_nivel_int(NIVEL_3);
-			eliminar_elem(&lista_bloqueados, proceso_bloqueado);
-			insertar_ultimo(&lista_listos, proceso_bloqueado);
-			fijar_nivel_int(lvl_int);
-		}
-		proceso_bloqueado = proceso_next;
-=======
 	
 	// Desbloquear siguiente bloqueado
 	while(proceso_bloqueado != NULL){
@@ -424,7 +405,6 @@ static void int_reloj(){
 		}
 
 		proceso_bloqueado = proc_next;
->>>>>>> feature/mutex_abrir_cerrar
 	}
 
 	return;
