@@ -215,19 +215,24 @@ static void liberar_proceso(){
 		// Unblock processes waiting for mutex
 		BCP *proc_unblock = lista_bloqueados.primero;
 
+		int count = 0;
 		while(proc_unblock != NULL){
+			count++;
+			BCP *proc_next = proc_unblock->siguiente;
 			if(proc_unblock->is_bloq_mutex == 1){
 				proc_unblock->estado = LISTO;
 				proc_unblock->is_bloq_mutex = 0;
-				BCP *proc_next = proc_unblock->siguiente;
 				
 				int lvl_int = fijar_nivel_int(NIVEL_3);
 				eliminar_elem(&lista_bloqueados, proc_unblock);
 				insertar_ultimo(&lista_listos, proc_unblock);
 				fijar_nivel_int(lvl_int);
-				
-				proc_unblock = proc_next;
+				break;
 			}
+			if (count>MAX_PROC*2){
+				break; // Safety check
+			}
+			proc_unblock = proc_next;
 		}
 		printk("FIN\n");
 	}
@@ -791,19 +796,26 @@ int sis2_cerrar_mutex(){
 	// Unblock processes waiting for mutex
 	BCP *proc_unblock = lista_bloqueados.primero;
 
+	int count=0;
 	while(proc_unblock != NULL){
+		count++;
+		BCP *proc_next = proc_unblock->siguiente;
 		if (proc_unblock->is_bloq_mutex == 1){
 			proc_unblock->estado = LISTO;
 			proc_unblock->is_bloq_mutex = 0;
-			BCP *proc_next = proc_unblock->siguiente;
+			
 
 			int lvl_int = fijar_nivel_int(NIVEL_3);
 			eliminar_elem(&lista_bloqueados, proc_unblock);
 			insertar_ultimo(&lista_listos, proc_unblock);
 			fijar_nivel_int(lvl_int);
 
-			proc_unblock = proc_next;
+			break;
 		}
+		if (count>MAX_PROC*2){
+			break; // Safety check
+		}
+		proc_unblock = proc_next;
 	}
 
 	return 0;
