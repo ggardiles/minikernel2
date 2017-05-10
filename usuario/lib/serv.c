@@ -55,4 +55,19 @@ int tiempos_proceso(struct tiempos_ejec *t_ejec){ // Ejercicio 3
 int leer_caracter(){
   	return llamsis(LEER_CARACTER,0);
 }
+int crear_mutex(char *nombre, int tipo){ // Ejercicio 4
+	return llamsis(CREAR_MUTEX, 2, (long)nombre, (long)tipo);
+}
+int abrir_mutex(char *nombre){ // Ejercicio 4
+	return llamsis(ABRIR_MUTEX, 1, (long) nombre);
+}
+int cerrar_mutex(unsigned int mutexid){ // Ejercicio 4
+	return llamsis(CERRAR_MUTEX, 1, (long)mutexid);
+}
+int lock(unsigned int mutexid){
+	return llamsis(LOCK, 1, (long)mutexid);
+}
+int unlock(unsigned int mutexid){
+	return llamsis(UNLOCK, 1, (long)mutexid);
+}
 

@@ -22,12 +22,34 @@
 #include "HAL.h"
 #include "llamsis.h"
 
+#define NO_RECURSIVO 0
+#define RECURSIVO 1
+#define ERR_MUT_COUNT -1
+#define ERR_MUT_PROC_COUNT -2
+#define ERR_NAME_LENGTH -3
+#define ERR_NAME_USED -4
+#define ERR_NAME_NOT_EXISTS -5
+#define ERR_DES_NOT_AVAIL -6
+#define MUT_NOT_EXIST -7
+
+/*
+ * Definicion del tipo que corresponde con mutex
+ */
+typedef struct{
+    char nombre[MAX_NOM_MUT]; 	
+	int tipo;	
+	int is_used;
+	int procesos[MAX_PROC]; // Procesos con el mutex abierto
+	int procesos_count;	
+} mutex;
+
 /*
  *
  * Definicion del tipo que corresponde con el BCP.
  * Se va a modificar al incluir la funcionalidad pedida.
  *
  */
+ 
 typedef struct BCP_t *BCPptr;
 
 typedef struct BCP_t {
@@ -42,7 +64,10 @@ typedef struct BCP_t {
 		int int_sistema;		/* interrupciones en modo sistema */
  		int int_usuario;		/* interrupciones en modo usuario */
 		int ticks_left_rr; 		/* ticks restantes slice round-robin */
-		int is_bloq_lectura;/* bloqueado por lectura */
+		int is_bloq_lectura;	/* bloqueado por lectura */
+		int mutex_list_proc[NUM_MUT_PROC];
+		int mutex_proc_count;
+		int is_bloq_mutex;      /*bloqueado creado el mutex*/
 } BCP;
 
 /*
@@ -66,6 +91,7 @@ struct tiempos_ejec {
     int sistema;
 };
 
+
 /*
  * Variable global que identifica el proceso actual
  */
@@ -84,7 +110,7 @@ BCP tabla_procs[MAX_PROC];
 lista_BCPs lista_listos= {NULL, NULL};
 
 /*
- * Variable global que representa la cola de procesos listos
+ * Variable global que representa la cola de procesos bloqueados
  */
 lista_BCPs lista_bloqueados= {NULL, NULL};
 /*
@@ -112,7 +138,15 @@ lista_BCPs lista_bloqueados= {NULL, NULL};
   */
  char char_buf[TAM_BUF_TERM];
  
+ /*
+  * Lista donde se guardaran todos los mutex
+  */
+ mutex mutex_list[NUM_MUT];
 
+  /*
+  * Variable donde se guardaran el contador de mutex en el sistema
+  */
+ int mutex_count = 0;
 
 /*
  *
@@ -135,6 +169,11 @@ int sis2_obtener_id_pr(); // Ejercicio 1
 int sis2_dormir(); // Ejercicio 2
 int sis2_tiempos_proceso(); // Ejercicio 3
 int sis2_leer_caracter(); // Ejercicio 3
+int sis2_crear_mutex(); // Ejercicio 4
+int sis2_abrir_mutex(); // Ejercicio 4
+int sis2_cerrar_mutex(); // Ejercicio 4
+int sis2_lock(); // Ejercicio 4
+int sis2_unlock(); // Ejercicio 4
 /*
  * Variable global que contiene las rutinas que realizan cada llamada
  */
@@ -145,7 +184,12 @@ servicio tabla_servicios[NSERVICIOS]={
 	{sis2_obtener_id_pr},
 	{sis2_dormir},
 	{sis2_tiempos_proceso},
-	{sis2_leer_caracter}
+	{sis2_leer_caracter},
+	{sis2_crear_mutex},
+	{sis2_abrir_mutex},
+	{sis2_cerrar_mutex},
+	{sis2_lock},
+	{sis2_unlock}
 	};
 
 #endif /* _KERNEL_H */
