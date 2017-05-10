@@ -198,7 +198,6 @@ static void liberar_proceso(){
 		printk("MUT_ID: %d, ",mut_id);
 		printk("NOMBRE: %s\n",mut_global->nombre);
 
-		mut_global->procesos[p_proc_actual->id] = 0;
 		mut_global->procesos_count--;
 
 		// Hay mas procesos con mutex -> pasar de eliminar este mutex
@@ -702,7 +701,6 @@ int sis2_crear_mutex(){
 
 			strcpy(new_mut->nombre, nombre);
 			new_mut->tipo = tipo;
-			new_mut->procesos[p_proc_actual->id] = 1;
 			new_mut->procesos_count++;
 			mut_idx = i;
 			break;
@@ -735,7 +733,6 @@ int sis2_abrir_mutex(){
 	for (i = 0; i < NUM_MUT; i++){
 		mutex *mut =(mutex *) &(mutex_list[i]);
 		if(strcmp(mut->nombre, nombre) == 0){
-			mut->procesos[p_proc_actual->id] = 1;
 			mut->procesos_count++;
 			mut_idx = i;
 			printk("ENCONTRADO MUTEX: %s\n",mut->nombre);
@@ -769,7 +766,6 @@ int sis2_cerrar_mutex(){
 	mutex *mut_global = (mutex *) &(mutex_list[mut_id]);
 
 	// Eliminar contador
-	mut_global->procesos[p_proc_actual->id] = 0;
 	mut_global->procesos_count--;
 
 	// Delete mutex local
