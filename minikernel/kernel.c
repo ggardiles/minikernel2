@@ -195,11 +195,33 @@ static void liberar_proceso(){
 		}
 		
 		mutex *mut_global = (mutex *) &(mutex_list[mut_id]);
-		printk("MUT_ID: %d, ",mut_id);
-		printk("NOMBRE: %s\n",mut_global->nombre);
-
-		mut_global->procesos[p_proc_actual->id] = 0;
 		mut_global->procesos_count--;
+
+		// Unlock mutex completely if blocked by proc
+		if (mut_global->blocked_by == p_proc_actual->id){
+			mut_global->blocked_by = -1;
+			mut_global->blocked_count = 0;
+		}
+
+		// Desbloquear a quien esté esperando por lock
+		BCP *proc_unblock = lista_bloqueados.primero;
+		while(proc_unblock != NULL){
+			BCP *proc_next = proc_unblock->siguiente;
+			if (proc_unblock->is_bloq_locking == mut_id){
+				printf("LIBERAR: Desbloqueado proceso %d esperando crear mutex %d", proc_unblock->id, mut_id);
+				proc_unblock->estado = LISTO;
+				proc_unblock->is_bloq_locking = -1;
+				
+
+				int lvl_int = fijar_nivel_int(NIVEL_3);
+				eliminar_elem(&lista_bloqueados, proc_unblock);
+				insertar_ultimo(&lista_listos, proc_unblock);
+				fijar_nivel_int(lvl_int);
+
+				break;
+			}
+			proc_unblock = proc_next;
+		}
 
 		// Hay mas procesos con mutex -> pasar de eliminar este mutex
 		if(mut_global->procesos_count > 0){
@@ -208,16 +230,17 @@ static void liberar_proceso(){
 		}
 
 		/* Eliminar mutex */
+		printk("LIBERAR_PROCESO: Eliminado mutex: %s\n", mut_global->nombre);
 		strcpy(mut_global->nombre,"");
-		//mut_global = NULL;
 		mutex_count--;
 
 		// Unblock processes waiting for mutex
-		BCP *proc_unblock = lista_bloqueados.primero;
+		proc_unblock = lista_bloqueados.primero;
 
 		while(proc_unblock != NULL){
 			BCP *proc_next = proc_unblock->siguiente;
 			if(proc_unblock->is_bloq_mutex == 1){
+				printf("LIBERAR: Desbloqueado proceso %d esperando crear mutex", proc_unblock->id);
 				proc_unblock->estado = LISTO;
 				proc_unblock->is_bloq_mutex = 0;
 				
@@ -389,8 +412,9 @@ static void int_reloj(){
 
 		// Si han pasado los ticks necesarios -> Desbloquear
 		if(ticks_left <= 0 &&
-		proceso_bloqueado->is_bloq_lectura == 0 &&
-		proceso_bloqueado->is_bloq_mutex == 0){
+		proceso_bloqueado->is_bloq_lectura == 0 && // And not blocked for anything
+		proceso_bloqueado->is_bloq_mutex == 0 &&
+		proceso_bloqueado->is_bloq_locking == -1){
 			
 			// Proceso pasa a listo
 			proceso_bloqueado->estado = LISTO;
@@ -484,6 +508,7 @@ static int crear_tarea(char *prog){
 			p_proc->mutex_list_proc[i] = -1;
 		}
 		p_proc->mutex_proc_count = 0;
+		p_proc->is_bloq_locking = -1;
 
 		/* lo inserta al final de cola de listos */
 		int lvl_int = fijar_nivel_int(NIVEL_3);
@@ -695,16 +720,15 @@ int sis2_crear_mutex(){
 	}
 
 	// Crear mutex si hay hueco
-	int mut_idx, i;
+	int i;
 	for (i = 0; i < NUM_MUT; i++){
 		mutex *new_mut =(mutex *) &(mutex_list[i]);
 		if(strlen(new_mut->nombre)==0){
 
 			strcpy(new_mut->nombre, nombre);
 			new_mut->tipo = tipo;
-			new_mut->procesos[p_proc_actual->id] = 1;
 			new_mut->procesos_count++;
-			mut_idx = i;
+			new_mut->blocked_by = p_proc_actual->id;
 			break;
 		}
 	}
@@ -714,7 +738,7 @@ int sis2_crear_mutex(){
 	
 	// Asignar id del mutex a proceso actual y devolver posicion en array del proceso como descriptor
 	int des = get_avail_mutex_des(p_proc_actual->mutex_list_proc);
-	p_proc_actual->mutex_list_proc[des] = mut_idx;
+	p_proc_actual->mutex_list_proc[des] = i;
 	printk("Descriptor: %d\n",des);
 	return p_proc_actual->mutex_proc_count++;
 }
@@ -735,10 +759,8 @@ int sis2_abrir_mutex(){
 	for (i = 0; i < NUM_MUT; i++){
 		mutex *mut =(mutex *) &(mutex_list[i]);
 		if(strcmp(mut->nombre, nombre) == 0){
-			mut->procesos[p_proc_actual->id] = 1;
 			mut->procesos_count++;
 			mut_idx = i;
-			printk("ENCONTRADO MUTEX: %s\n",mut->nombre);
 			break;
 		}
 	}
@@ -761,6 +783,7 @@ int sis2_cerrar_mutex(){
 	unsigned int mut_des = (unsigned int)leer_registro(1);
 	printk("CERRAR MUTEX: descriptor: %d\n",mut_des);
 	if((mut_des > NUM_MUT_PROC - 1) || p_proc_actual->mutex_list_proc[mut_des] == -1){
+		printk("MUT_NOT_EXIST\n");
 		return MUT_NOT_EXIST;
 	}
 
@@ -769,12 +792,36 @@ int sis2_cerrar_mutex(){
 	mutex *mut_global = (mutex *) &(mutex_list[mut_id]);
 
 	// Eliminar contador
-	mut_global->procesos[p_proc_actual->id] = 0;
 	mut_global->procesos_count--;
 
 	// Delete mutex local
 	p_proc_actual->mutex_proc_count--;
 	p_proc_actual->mutex_list_proc[mut_des] = -1;
+
+	// Unlock mutex completely if blocked by proc
+	if (mut_global->blocked_by == p_proc_actual->id){
+		mut_global->blocked_by = -1;
+		mut_global->blocked_count = 0;
+	}
+
+	// Desbloquear procesos bloqueados por lock
+	BCP *proc_unblock = lista_bloqueados.primero;
+	while(proc_unblock != NULL){
+		BCP *proc_next = proc_unblock->siguiente;
+		if (proc_unblock->is_bloq_locking == mut_id){
+			proc_unblock->estado = LISTO;
+			proc_unblock->is_bloq_locking = -1;
+			
+
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proc_unblock);
+			insertar_ultimo(&lista_listos, proc_unblock);
+			fijar_nivel_int(lvl_int);
+
+			break;
+		}
+		proc_unblock = proc_next;
+	}
 
 	// Si otros procesos usan el mutex, no eliminarlo
 	if(mut_global->procesos_count > 0){
@@ -784,14 +831,12 @@ int sis2_cerrar_mutex(){
 	
 	/* Nadie mas lo usa -> Cerrar el mutex */
 	// Delete global mutex
-	//mut_global = NULL;
+	printk("CERRAR_MUTEX: Eliminado mutex: %s\n", mut_global->nombre);
 	strcpy(mut_global->nombre, "");
 	mutex_count--;
 
-	//unblock_waiting_mutex();
 	// Unblock processes waiting for mutex
-	BCP *proc_unblock = lista_bloqueados.primero;
-
+	proc_unblock = lista_bloqueados.primero;
 
 	while(proc_unblock != NULL){
 		BCP *proc_next = proc_unblock->siguiente;
@@ -814,11 +859,101 @@ int sis2_cerrar_mutex(){
 }
 
 int sis2_lock(){
-	return -1;
+	// Indice en la lista de mutex del proceso
+	unsigned int mut_des = (unsigned int)leer_registro(1);
+	printk("LOCK MUTEX: descriptor: %d\n",mut_des);
+	if((mut_des > NUM_MUT_PROC - 1) || p_proc_actual->mutex_list_proc[mut_des] == -1){
+		printk("MUT_NOT_EXIST\n");
+		return MUT_NOT_EXIST;
+	}
+
+	// Get mutex
+	int mut_id = p_proc_actual->mutex_list_proc[mut_des];
+	mutex *mut_global = (mutex *) &(mutex_list[mut_id]);
+
+	// If mutex already blocked -> Block process
+
+	while( mut_global->blocked_by != -1 && // Mutex is not free ( >0 )
+		   mut_global->blocked_by != p_proc_actual->id){ // AND Mutex is not blocked by current process
+		// Bloquear proceso actual
+		p_proc_actual->estado = BLOQUEADO;
+		p_proc_actual->is_bloq_locking = mut_id;
+		int lvl_int = fijar_nivel_int(NIVEL_3);
+		eliminar_elem(&lista_listos, p_proc_actual);
+		insertar_ultimo(&lista_bloqueados, p_proc_actual);
+		fijar_nivel_int(lvl_int);
+
+		// CCV
+		BCP *proceso_bloqueado = p_proc_actual;
+		p_proc_actual = planificador();
+		//printk("LOCK BLOCK: OLD: %d, NEW: %d, MUT %s BLOCKED_BY: %d\n", proceso_bloqueado->id,
+		//	 p_proc_actual->id,mut_global->nombre, mut_global->blocked_by);
+		
+		cambio_contexto(&(proceso_bloqueado->contexto_regs), &(p_proc_actual->contexto_regs));	
+
+		if (mut_global == NULL){
+			return MUT_NOT_EXIST;
+		}
+	}
+
+	// Bloquea el mutex
+	mut_global->blocked_by = p_proc_actual->id;
+
+	// Aumenta el contador o error
+	if(mut_global->blocked_count==1 && mut_global->tipo==NO_RECURSIVO){
+		return ERR_NOT_RECURSIVE;
+	}
+	mut_global->blocked_count++;	
+	
+	return 0;
 }
 
 int sis2_unlock(){
-	return -1;
+	// Indice en la lista de mutex del proceso
+	unsigned int mut_des = (unsigned int)leer_registro(1);
+	printk("UNLOCK MUTEX: descriptor: %d\n",mut_des);
+	if((mut_des > NUM_MUT_PROC - 1) || p_proc_actual->mutex_list_proc[mut_des] == -1){
+		printk("MUT_NOT_EXIST\n");
+		return MUT_NOT_EXIST;
+	}
+
+	// Get mutex
+	int mut_id = p_proc_actual->mutex_list_proc[mut_des];
+	mutex *mut_global = (mutex *) &(mutex_list[mut_id]);
+
+	// Unlock mutex if is locked by this process
+	if (mut_global->blocked_by != p_proc_actual->id){
+		printk("ERR_MUT_BLOCKED_BY_OTHER\n");
+		return ERR_MUT_BLOCKED_BY_OTHER;
+	}
+
+	// Desbloquear mutex sea RECURSIVO o NO_RECURSIVO
+	mut_global->blocked_count--;
+	if(mut_global->blocked_count != 0){
+		return 0;
+	}
+	mut_global->blocked_by = -1;
+
+	// Unblock processes waiting to lock mutex
+	BCP *proc_unblock = lista_bloqueados.primero;
+	while(proc_unblock != NULL){
+		BCP *proc_next = proc_unblock->siguiente;
+		if (proc_unblock->is_bloq_locking == mut_id){ // Desbloquear aquel que este esperando por este mutex
+			proc_unblock->estado = LISTO;			  // Solamente a 1.
+			proc_unblock->is_bloq_locking = -1;
+			
+
+			int lvl_int = fijar_nivel_int(NIVEL_3);
+			eliminar_elem(&lista_bloqueados, proc_unblock);
+			insertar_ultimo(&lista_listos, proc_unblock);
+			fijar_nivel_int(lvl_int);
+
+			break;
+		}
+		proc_unblock = proc_next;
+	}
+
+	return 0;
 }
 
 /*
