@@ -31,6 +31,8 @@
 #define ERR_NAME_NOT_EXISTS -5
 #define ERR_DES_NOT_AVAIL -6
 #define MUT_NOT_EXIST -7
+#define ERR_NOT_RECURSIVE -8;
+#define ERR_MUT_BLOCKED_BY_OTHER -9;
 
 /*
  * Definicion del tipo que corresponde con mutex
@@ -38,9 +40,9 @@
 typedef struct{
     char nombre[MAX_NOM_MUT]; 	
 	int tipo;	
-	int is_used;
-	int procesos[MAX_PROC]; // Procesos con el mutex abierto
 	int procesos_count;	
+	int blocked_count;
+	int blocked_by;
 } mutex;
 
 /*
@@ -67,7 +69,8 @@ typedef struct BCP_t {
 		int is_bloq_lectura;	/* bloqueado por lectura */
 		int mutex_list_proc[NUM_MUT_PROC];
 		int mutex_proc_count;
-		int is_bloq_mutex;      /*bloqueado creado el mutex*/
+		int is_bloq_mutex;      /* bloqueado creando el mutex*/
+		int is_bloq_locking;    /* bloqueado locking mutex */
 } BCP;
 
 /*
